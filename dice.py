@@ -77,9 +77,6 @@ class Round:
 		self.currentbid = (1,0,1)
 		self.submittedbid = (1,0,1)
 		self.bidhistory = []
-		#set. directionality for the round.
-		self.forward=1
-		self.backward=self.forward*-1
 		for player in Players:
 			player.rollAllDice()
 		#Play is a function that is recursive if the Player bids, and has an exit condition upon challenge.
@@ -91,22 +88,25 @@ class Round:
 			if self.getActualDiceCount(Players)==self.currentbid[1]:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger loses!")
 				Players[0].lose()
-				Players[self.forward].gain()
+				Players[-1].gain()
 				if Players[0].hand==[]:
 					print("You lose" + str(Players[0].name))
-					del Players[0] 
-				else:
-					Players.rotate(self.backward)
-			else:	
-				if ((self.getActualDiceCount(Players)<self.currentbid[1] and self.isChallengeUnder()) or (self.getActualDiceCount(Players)>self.currentbid[1] and self.isChallengeOver())):
-					print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger wins!")
-					Players[self.forward].lose()
-					if Players[self.forward].hand==[]:
-						print("You lose" + str(Players[self.forward].name))
-						del Players[self.forward]
+					del Players[0]
+				#since the challenger lost, the play reverses since previous bettor was correct
+				print("Play Reverses!")
+				starter = [Players.popleft()]
+				Players.reverse()
+				Players.extendleft(starter)
+			else:
+				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! ")	
+				if ((self.getActualDiceCount(Players)<self.currentbid[1] and self.isChallengeUnder()) or (self.getActualDiceCount(Players)>self.currentbid[1] and self.isChallengeOver()) or (self.getActualDiceCount(Players)!=self.currentbid[1] and self.isChallengeStraight())):
+					print("Challenger wins!")
+					Players[-1].lose()
+					if Players[-1].hand==[]:
+						print("You lose" + str(Players[-1].name))
+						del Players[1]
 				else:
 					print("Both Bidder and Challenger are wrong")
-					Players.rotate(self.backward)
 		#Otherwise, treat as normal
 		else:
 			if self.getActualDiceCount(Players)>=self.currentbid[1]:
@@ -115,16 +115,17 @@ class Round:
 				if Players[0].hand==[]:
 					print("You lose" + str(Players[0].name))
 					del Players[0]
-				else:
-					Players.rotate(self.backward)
-				#In a sequential dice game not anyone can challenge, so when the challenger (current bettor) loses,
-				#the winner is necessarily the previous player (the previous bettor)
+				starter = [Players.popleft()]
+				#since the challenger lost, the rotation reverses since previous bettor was correct
+				print("Play Reverses!")
+				Players.reverse()
+				Players.extendleft(starter)
 			else:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger wins!")
-				Players[self.forward].lose()
-				if Players[self.forward].hand==[]:
-					print("You lose" + str(Players[self.forward].name))
-					del Players[self.forward]
+				Players[-1].lose()
+				if Players[-1].hand==[]:
+					print("You lose" + str(Players[-1].name))
+					del Players[-1]
 		print("This is the end of the Round")
 		self.playersleft = Players
 		print("The remaining players are")
@@ -151,7 +152,7 @@ class Round:
 					#Make the submitted bid the newly established currentbid of the round
 					self.currentbid = self.submittedbid
 					#shift to the next player
-					Players.rotate(self.forward)
+					Players.rotate(-1)
 				#Technically whether or not you submit a valid raise, play continues.
 				self.play(Players)
 			#Play ends if it's a valid challenge
@@ -186,12 +187,12 @@ class Round:
 		else:
 			return False
 	def isChallengeUnder(self):
-		if (self.submittedbid[0]==1 and self.submittedbid[1]==0 and self.submittedbid[2]==0):
+		if (self.submittedbid[0]==0 and self.submittedbid[1]==0 and self.submittedbid[2]==1):
 			return True
 		else:
 			return False
 	def isChallengeOver(self):
-		if (self.submittedbid[0]==0 and self.submittedbid[1]==0 and self.submittedbid[2]==1):
+		if (self.submittedbid[0]==1 and self.submittedbid[1]==0 and self.submittedbid[2]==0):
 			return True
 		else:
 			return False
