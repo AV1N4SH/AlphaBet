@@ -5,7 +5,9 @@ import sys
 import random
 import threading
 import time
+import math
 from collections import deque
+from itertools import product
 
 class Dice:
 	numsides = 6
@@ -18,7 +20,7 @@ class Dice:
 
 class Liar:
 	#Initial hand size
-	numdice = 2
+	numdice = 5
 	def __init__(self,name):
 		#Each Player starts with an empty hand
 		self.hand =[]
@@ -51,7 +53,7 @@ class Liar:
 			die.roll()
 
 class Game:
-	numPlayers = 3
+	numPlayers = 4
 	def __init__(self):
 		self.Players = deque()
 		#Setup Game
@@ -77,6 +79,8 @@ class Round:
 		self.currentbid = (1,0,1)
 		self.submittedbid = (1,0,1)
 		self.bidhistory = []
+		self.bidgrid=[]
+		self.generateBidGrid(Players)
 		for player in Players:
 			player.rollAllDice()
 		#Play is a function that is recursive if the Player bids, and has an exit condition upon challenge.
@@ -131,8 +135,79 @@ class Round:
 		print("The remaining players are")
 		for player in self.playersleft:
 			print(player.name)
+	def generateBidGrid(self,Players):
+		maxquantity = self.getTotalDiceInPlay(Players)
+		maxvalue = Players[0].hand[0].numsides
+		for d in range(maxquantity):
+			self.bidgrid.append([])
+		for n in range(maxvalue):
+			lvl=1
+			for b in self.bidgrid:
+				b.append((lvl,n+1))
+				lvl+=1
+		return self.bidgrid
 
+	def dice_match_probability(self,num_dice, num_sides, face1, face2, total_matches):
+		"""
+		Calculate the probability of getting a specific total number of matches to two face values.
+		
+		:param num_dice: Number of dice being rolled
+		:param num_sides: Number of sides on each die
+		:param face1: First face value we're looking for
+		:param face2: Second face value we're looking for
+		:param total_matches: The total number of dice showing either face1 or face2
+		:return: The probability as a float between 0 and 1
+		"""
+		if total_matches > num_dice:
+			return 0.0
+		
+		# Probability of rolling either face1 or face2 on a single die
+		p_match = 2 / num_sides if face1 != face2 else 1 / num_sides
+		
+		# Probability of not rolling either face1 or face2 on a single die
+		p_no_match = 1 - p_match
+		
+		# Use the binomial probability formula
+		probability = (
+			math.comb(num_dice, total_matches) * 
+			(p_match ** total_matches) * 
+			(p_no_match ** (num_dice - total_matches))
+		)
+		
+		return probability
+
+	def printBidGrid(self):
+		for row in self.bidgrid:
+			print(row)
+			print('\n')
+	def generateProbabidity(self,bid,Players):
+		matches=0
+		dicesfaceup = Players[0].getDiceFaceUp()
+		for face in dicesfaceup:
+			if face==bid[1] or face==6:
+				matches+=1
+		if matches >= bid[0]:
+			return str(100)+"%"
+		else:
+			needed = bid[0] - matches
+			outstanding = self.getTotalDiceInPlay(Players) - len(Players[0].hand)
+			return str(round(((self.dice_match_probability(outstanding,Players[0].hand[0].numsides,bid[1],6,needed))*100),2))+"%"
+	
+	def printProbabidityGrid(self,Players):
+		probabiditygrid=[]
+		for row in self.bidgrid:
+			probabidityrow = []
+			for bid in row:
+				probabidityrow.append(self.generateProbabidity(bid,Players))
+			probabiditygrid.append(probabidityrow)
+		for row in probabiditygrid:
+			print(row)
+			print('\n')
+			
 	def play(self,Players):
+		#In productionalized game form, probabidity grid will be overlayed over bid grid
+		self.printBidGrid()
+		self.printProbabidityGrid(Players)
 		self.submitBidRequest(Players,self.currentbid)
 		submittedbid = Players[0].bid()
 		if (self.isValidBidFormat(submittedbid) and self.isValidBidPrecision(submittedbid,Players)):
@@ -166,7 +241,7 @@ class Round:
 		if (self.isChallengeStraight() and self.inHistory(self.currentbid)):
 			print("You must indicate over or under!")
 			return False
-		#Since challenges are Over (1,0,0) Under (0,0,1) and Straight (0,0,0) the second element will always be 0 if it is a challenge, and greater than one if it's a bid
+		#Since challenges are Over (1,0,0) Under (0,0,1) and Straight (0,0,0) the second element will always be 0 if it is a challenge, and greater than zero if it's a bid
 		if (self.submittedbid[1]>0):
 			return False
 		else:
