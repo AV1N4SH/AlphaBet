@@ -20,7 +20,7 @@ class Dice:
 
 class Liar:
 	#Initial hand size
-	numdice = 5
+	numdice = 2
 	def __init__(self,name):
 		#Each Player starts with an empty hand
 		self.hand =[]
@@ -53,7 +53,7 @@ class Liar:
 			die.roll()
 
 class Game:
-	numPlayers = 4
+	numPlayers = 2
 	def __init__(self):
 		self.Players = deque()
 		#Setup Game
@@ -64,7 +64,7 @@ class Game:
 			players = self.Players
 			newRound = Round(players)
 			self.Players = newRound.playersleft
-		print("Game Over! The last remaining player, " + str(self.Players[0].name) +" has "+str(len(self.Players[0].hand))+ "dice left!")
+		print("Game Over! The last remaining player, " + str(self.Players[0].name) +" has "+str(len(self.Players[0].hand))+ " dice left!")
 
 	def multiplePlayersRemaining(self):
 		if (len(self.Players)>1):
@@ -86,21 +86,36 @@ class Round:
 		#Play is a function that is recursive if the Player bids, and has an exit condition upon challenge.
 		#Let's Start Playing!
 		self.play(Players)
-		#Should Only Reach this condition upon challenge when play is over
+		#Should Only Reach this condition upon challenge or calzo when play is over
+		if self.isValidCalzo(Players):
+			if self.getActualDiceCount(Players)==self.currentbid[1]:
+				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! This is a correct Calzo!")
+				Players[-1].gain()
+			else:
+				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! This is a failed Calzo!")
+				Players[0].lose()
+				#since the calzoer lost, the play reverses since previous bettor was correct
+				print("Play Reverses!")
+				starter = [Players.popleft()]
+				Players.reverse()
+				Players.extendleft(starter)
+				if Players[0].hand==[]:
+					print("You lose" + str(Players[0].name))
+					del Players[0]
 		#Only enter condition if Exact Style Bid
-		if self.currentbid[0]==1:
+		elif self.currentbid[0]==1:
 			if self.getActualDiceCount(Players)==self.currentbid[1]:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger loses!")
 				Players[0].lose()
 				Players[-1].gain()
-				if Players[0].hand==[]:
-					print("You lose" + str(Players[0].name))
-					del Players[0]
 				#since the challenger lost, the play reverses since previous bettor was correct
 				print("Play Reverses!")
 				starter = [Players.popleft()]
 				Players.reverse()
 				Players.extendleft(starter)
+				if Players[0].hand==[]:
+					print("You lose" + str(Players[0].name))
+					del Players[0]
 			else:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! ")	
 				if ((self.getActualDiceCount(Players)<self.currentbid[1] and self.isChallengeUnder()) or (self.getActualDiceCount(Players)>self.currentbid[1] and self.isChallengeOver()) or (self.getActualDiceCount(Players)!=self.currentbid[1] and self.isChallengeStraight())):
@@ -108,7 +123,7 @@ class Round:
 					Players[-1].lose()
 					if Players[-1].hand==[]:
 						print("You lose" + str(Players[-1].name))
-						del Players[1]
+						del Players[-1]
 				else:
 					print("Both Bidder and Challenger are wrong")
 		#Otherwise, treat as normal
@@ -116,14 +131,14 @@ class Round:
 			if self.getActualDiceCount(Players)>=self.currentbid[1]:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger loses!")
 				Players[0].lose()
-				if Players[0].hand==[]:
-					print("You lose" + str(Players[0].name))
-					del Players[0]
 				starter = [Players.popleft()]
 				#since the challenger lost, the rotation reverses since previous bettor was correct
 				print("Play Reverses!")
 				Players.reverse()
 				Players.extendleft(starter)
+				if Players[0].hand==[]:
+					print("You lose" + str(Players[0].name))
+					del Players[0]
 			else:
 				print("The actual dice count is " + str(self.getActualDiceCount(Players)) + " " + str(self.currentbid[2]) + "'s! Challenger wins!")
 				Players[-1].lose()
@@ -209,43 +224,85 @@ class Round:
 		self.printBidGrid()
 		self.printProbabidityGrid(Players)
 		self.submitBidRequest(Players,self.currentbid)
-		submittedbid = Players[0].bid()
-		if (self.isValidBidFormat(submittedbid) and self.isValidBidPrecision(submittedbid,Players)):
-			print("this is a valid bidformat")
-			self.submittedbid = submittedbid
-			#Technically, a challenge is just a bid of either (0,0,0) (1,0,0) or (0,0,1)
-			if (self.isValidChallenge()==False):
-				if (self.isValidRaise()):
-					if (self.submittedbid[0]==0):
-						print(Players[0].name + " bet " + str(self.submittedbid[1]) + " " + str(self.submittedbid[2]) + "'s!")
-					else:
-						print(Players[0].name + " bet exactly " + str(self.submittedbid[1]) + " " + str(self.submittedbid[2]) + "'s!")
-					#Add the currentbid to the bidhistory
-					self.bidhistory.append(self.currentbid)
-					print("Appending " + str(self.currentbid) + "to the bid history. The complete bid history is as follows")
-					print(str(self.bidhistory))
-					#Make the submitted bid the newly established currentbid of the round
-					self.currentbid = self.submittedbid
-					#shift to the next player
-					Players.rotate(-1)
-				#Technically whether or not you submit a valid raise, play continues.
+		self.submittedbid = Players[0].bid()
+		#Play function should return upon ValidCalzo
+		if (self.isCalzo()):
+			#Play should end if valid calzo
+			if self.isValidCalzo(Players):
+				return
+			#Invalid Calzo should result in playing again
+			elif not self.isValidCalzo(Players):
 				self.play(Players)
-			#Play ends if it's a valid challenge
-			pass
-		else:
-			#Play again if you submitted bad format bid
+		#Play function should return upon ValidChallenge
+		elif (self.isChallengeStraight() or self.isChallengeUnder() or self.isChallengeOver()):
+			if self.isValidChallenge():
+				return
+			elif not self.isValidChallenge():
+				self.play(Players)
+		elif (self.isValidBidFormat(self.submittedbid) and self.isValidBidPrecision(self.submittedbid,Players)):
+			print("This is a valid bidformat")
+			if (self.isValidRaise()):
+				if (self.submittedbid[0]==0):
+					print(Players[0].name + " bet " + str(self.submittedbid[1]) + " " + str(self.submittedbid[2]) + "'s!")
+				else:
+					print(Players[0].name + " bet exactly " + str(self.submittedbid[1]) + " " + str(self.submittedbid[2]) + "'s!")
+				#Add the currentbid to the bidhistory
+				self.bidhistory.append(self.currentbid)
+				print("Appending " + str(self.currentbid) + "to the bid history. The complete bid history is as follows")
+				print(str(self.bidhistory))
+				#Make the submitted bid the newly established currentbid of the round
+				self.currentbid = self.submittedbid
+				#shift to the next player
+				Players.rotate(-1)
 			self.play(Players)
-			
-	def isValidChallenge(self):
-		#Challenging a non exact bid should be (0,0,0)
-		if (self.isChallengeStraight() and self.inHistory(self.currentbid)):
-			print("You must indicate over or under!")
+		elif (not (self.isValidBidFormat(self.submittedbid) and self.isValidBidPrecision(self.submittedbid,Players))):
+			self.play(Players)
+
+	def isValidCalzo(self, Players):
+		if self.isCalzo():
+			if (self.currentbid==(1,0,1)):
+				print("You cannot calzo at the beginning of a round.")
+				return False
+			if (self.currentbid[0]==0):
+				print("You cannot calzo since this is NOT an exact style bid")
+				return False
+			biggerhands=0
+			smallerhands=0
+			for player in Players:
+				if (len(Players[0].hand)<len(player.hand)):
+					biggerhands=biggerhands+1
+				if (len(Players[0].hand)>len(player.hand)):
+					smallerhands=smallerhands+1
+			if biggerhands==0 and smallerhands > 0:
+				print("Bigger Hands = " + str(biggerhands))
+				print("Smaller Hands = " + str(smallerhands))
+				print("This is an invalid calzo, since you are a dice leader. There are no bigger hands than yours and someone else has a smaller hand")
+				return False
+			else:
+				print("This is a valid calzo, since you are not a dice leader. Either there is a bigger hand at the table or everyone is even")
+				return True	
+		else:
+			print("This is NOT a valid calzo, since it's not even a calzo")
 			return False
-		#Since challenges are Over (1,0,0) Under (0,0,1) and Straight (0,0,0) the second element will always be 0 if it is a challenge, and greater than zero if it's a bid
-		if (self.submittedbid[1]>0):
+
+	def isValidChallenge(self):
+		if (self.currentbid==(1,0,1)):
+			print("You cannot challenge at the beginning of a round.")
+			return False
+		#Straight Challenging a exact bid not allowed
+		if (self.isChallengeStraight() and self.currentbid[0]==1):
+			print("You Cannot straight challenge and exact bid")
+			return False
+		#Over Under challenge not allowed on regular bid nor exact bid that is not a repeat of previous bid
+		if ((self.currentbid[0]==0 and not self.isChallengeStraight())) or ((self.isChallengeOver() or self.isChallengeUnder()) and self.currentbid[0]==1 and not self.inHistory(self.currentbid)):
+			print("This is an invalid challenge because a regular bid should only be straight challenge not over/under challenged")
+			print("OR")
+			print("This is an invalid challenge because an exact bid that is not a repeat of a previous bid should be straight challenged")
 			return False
 		else:
+			#I think all other challenges should be allowed, since that would be the case where either straight challenge on regular bid, or over under when exact bid is repeated
 			return True
+		
 	def inHistory(self,bid):
 		bidlist = list(bid)
 		bidlist[0] = 0
@@ -258,18 +315,31 @@ class Round:
 			return False
 	def isChallengeStraight(self):
 		if (self.submittedbid[0]==0 and self.submittedbid[1]==0 and self.submittedbid[2]==0):
+			print("This is a Straight Challenge")
 			return True
 		else:
+			print("This is NOT a Straight Challenge")
 			return False
 	def isChallengeUnder(self):
 		if (self.submittedbid[0]==0 and self.submittedbid[1]==0 and self.submittedbid[2]==1):
+			print("This is an Under Challenge")
 			return True
 		else:
+			print("This is NOT an Under Challenge")
 			return False
 	def isChallengeOver(self):
 		if (self.submittedbid[0]==1 and self.submittedbid[1]==0 and self.submittedbid[2]==0):
+			print("This is an Over Challenge")
 			return True
 		else:
+			print("This is NOT an Over Challenge")
+			return False
+	def isCalzo(self):
+		if (self.submittedbid[0]==0 and self.submittedbid[1]==1 and self.submittedbid[2]==0):
+			print("This is a Calzo")
+			return True
+		else:
+			print("This is NOT a Calzo")
 			return False
 
 	def isValidBidFormat(self,bid):
@@ -306,7 +376,7 @@ class Round:
 			if (self.isChallengeOver() or self.isChallengeStraight() or self.isChallengeUnder()):
 				print("This is an Invalid Challenge")
 			else:
-				print("The submitted bid is not a valid raise. You must raise either the face value or dice quantity but you cannot ever reduce the quantity")
+				print("The submitted bid is NOT a valid raise. You must raise either the face value or dice quantity but you cannot ever reduce the quantity")
 			return False
 
 	def getTotalDiceInPlay(self,players):

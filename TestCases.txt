@@ -1,0 +1,37 @@
+Test Cases (Assumption is two Players, two dice each)
+
+- Straight Challenge at Outset --> You cannot challenge at beginning of a round, Replay | Passed
+- Over Challenge at the Outset --> You cannot challenge at beginning of a round, Replay | Passed
+- Under Challenge at the Outset --> You cannot challenge at beginning of a round, Replay | Passed
+- Calzo at the the Outset --> You cannot calzo at the beginning of a round, Replay | Passed
+
+- Bid (0,1,1)
+-- Straight Challenge --> Win if < 1 1, Lose if >= 1 1, reverse play if challenger is wrong | Passed
+-- Over Challenge --> This is an invalid challenge because overunder challenge only for exact bid, Replay | Passed
+-- Under Challenge --> This is an invalid challenge because overunder challenge only for exact bid, Replay | Passed
+-- Calzo --> Invalid Calzo, Replay | Passed
+-- Bid (0,1,1) again --> This is not a valid raise, you must raise face/quantity and never reduce quantity, Replay| Passed
+
+Bid (1,1,1) straight
+-- Straight Challenge --> Win if =/= 1 1, Lose if = 1 1, reverse play if challenger is wrong | Passed
+-- Over Challenge --> This is an invalid challenge, replay | Passed
+-- Under Challenge --> This is an invalid challenge, replay | Passed
+
+- Bid (1,1,1) after (0,1,1) --> Exactly 1 1 should be submitted | Passed
+-- Straight Challenge --> This is an invalid challenge, must over under | Passed
+-- Over Challenge --> 
+--- Win if > 1 1 | Passed
+--- challenger lose AND bidder gain if = 1 1 | Passed
+--- nop if < 1 1 | Passed
+-- Under Challenge
+--- Win if < 1 1 | Passed
+--- challenger lose AND bidder gain if = 1 1 | Passed
+--- nop if > 1 1 | Passed
+-- Calzo
+--- (all even), Challenger Block and bidder gain if = 1 1 | Passed
+--- (all even),lose if =/= 1 1 | Passed
+--- (other bigger hand), Challenger Block and bidder gain if = 1 1 | Passed
+--- (other bigger hand),lose if =/= 1 1 | Passed
+--- (Dice Leader), This is an Invalid Calzo, you are a Dice Leader | Passed
+
+
